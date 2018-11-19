@@ -1,0 +1,138 @@
+Values are things that take up memory at runtime.
+
+Methods, packages, types are not values
+
+val ref: Boolean
+Can be read as, "ref is a value in the set of Booleans". The compiler sees this logical proposition and tries to validate them. Every type error is a logical contradiction. In that way, the compiler helps us make logical statements so we experiece fewer runtime errors.
+
+Types are logical propositions.
+
+Boolean = { true, false }
+Byte = { -128, ..., 127 }
+Int = {x | x is an integer that can fit inside 32 bits / 4 bytes }
+
+val UnitValues: Set[Unit] = ???
+(), which is a value
+
+val NothingValues: Set[Nothing] = ???
+val nothing: Nothing = ???
+There is no value of type Nothing. But technically the rhs can be a throw.
+
+Algebraic Data Type is any type that's composed of Sums and Products of other types. The goal, not always attainable, is to define ADTs that make illegal states unrepresentable.
+
+Product Types
+ A = { a1, a2, ..., am }
+ B = { b1, b2, ..., bn }
+ A * B = {
+   (a1, b1), (a1, b2), ..., (a1, bn),
+   (a2, b1), (a2, b2), ..., (a2, bn),
+   ...
+   (am, b1), (am, b2), ..., (am, bn),
+ }
+The size of the set of values
+ |A| = n
+ |B| = m
+ |A * B| = n * m
+A tuple is a product type.
+ val point: (Int, Int) is a two-way product
+ val point: (Int, Int, Int) is a three-way product
+case classes are product types with names.
+
+The geometric interpretation of Product Types is using dimensions, cartesean cross products, etc
+  
+Sum Types
+A + B = { x | x : A OR x : B }
+      = { a1, a2, ..., an, b1, b2, ..., bm }
+It's a union.
+|A + B| = n + m
+Either is a sum type of two sets.
+By convention, |A + A| = 2n because we do not apply a distinct operation. This makes Either a proper sum type.
+
+Either[Either[Int, String]] gets shitty so
+sealed trait CoffeePreference
+case object Black extends CoffeePreference
+case object WithCream extends CoffeePreference
+case object WithSugar extends CoffeePreference
+case class Both(l: CoffeePreference,
+                r: CoffeePreference) extends CoffeePreference
+If it's not sealed, it's not a sum type because the number of terms are not fixed. The recursive reference in Both makes this not a (strict) sum type.
+
+Sum types and unions are mostly equivalent. Open unions are infinite and not sum types.
+
+Broad statement: Everything should be final. Sealed traits and final case classes.
+Broad statement: Avoid recursion whenever you can. In both types and functions.
+
+sealed trait vs final abstract class
+Binary compatibility works better with abstract class.
+
+isomorphism: things have the same information content
+bit and boolean
+
+Domain
+{ a, b, c}
+
+Codomain
+{ x, y }
+
+Function
+Mapping of each element of a domain to an element of a codomain.
+
+A method is a function where the type it's defined on is effectively an argument. Keep this hidden parameter in mind. It forms part of the domain of the function.
+
+All functions `f: A => B` satisfy the following properties:
+1. Totality: If `a: A`, then `f(a) : B`
+2. Determinism: If `a: A`, `b: A`, and `a == b`, then `f(a) == f(b)`
+3. Purity. The only effect of evaluating `f(x)` is computing the return value.
+
+Benifits:
+No runtime errors.
+The type signature is not lying. Is it null? Is the string empty? Do I need a try/catch?
+No wondering if it's safe to call.
+
+
+Broad statement: Try to push decisions higher. Don't try to make them in low level code.
+
+1. no null
+2. no exceptions
+3. no var
+4. no == (Object equals) and a few others
+5. no reflection (getClass included)
+
+Use tools like scalafix to enforce these rules.
+
+
+Parametric polymorphism: functions with type parameters.
+
+JDG considers shadowing GOOD because it removes choice...
+
+Type parameters reduce bugs by limiting the number of possible implementations of the function.
+
+Higher Kinded Types
+List is a type constructor. Give it another type, Int, and it returns the type of a list of Int, List[Int]. In constrast, normal constructors are Data Constructors that create Data from Data.
+The type of a type, *, is the kind.
+Int: *
+List: * => *
+Option: * => *
+Future and Try are also * => * because the Exception type is fixed.
+Type level tuple [*, *]
+Map: [*, *] => *
+Either: [*, *] => *
+Tuple2: [*, *] => *
+
+trait Algorithm[Container[_]] {
+  def runAlgorithm[A](container: Container[A]): Int = ???
+}
+
+val listAlgo : Algorithm[List] = ???
+Algorithm is a higher order kind. (* => *) => *
+It accepts a type constructor and produces a type constructor.
+Data constructors have types, Type constructors have kinds.
+
+trait Foo[A[_], B[_[_]], C[_, _[_], _]]
+Foo: [* => *, (* => *) => *, [*, * => *, *] => *] => *
+
+
+Typeclasses
+Scala searches the Data Type companion object and the Implicit type's companion object for instances. Put them in whichever one you control.
+
+Parametric polymorphism lets us throw away unneeded type information. Typeclasses let us add back only what's needed. It's this combination that makes statically typed functional programming so productive.
