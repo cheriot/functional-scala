@@ -135,4 +135,132 @@ Foo: [* => *, (* => *) => *, [*, * => *, *] => *] => *
 Typeclasses
 Scala searches the Data Type companion object and the Implicit type's companion object for instances. Put them in whichever one you control.
 
+trait to definte the typeclass
+val/def to define impls for concrete types
+
+Look for three things
+1. type parameters that indicate what the typeclass applies to
+2. methods that define new operations
+3. laws that may be defined in code or scalacheck comments
+
 Parametric polymorphism lets us throw away unneeded type information. Typeclasses let us add back only what's needed. It's this combination that makes statically typed functional programming so productive.
+
+Algebraic data types are types composed from sums and products.
+
+Variance in functional programming:
++ is an input (covariant)
+- is an output (contravariant?)
+
+Typeclasses are verbose to implement, but worthwhile because there's a limited number of them per application and the impact is powerful. Most typeclass related code will be instances for additional types, which are quick and simple.
+
+
+Only require typeclass evidence for methods/operations that require them. Minimum required operations. Sometimes this is unintuitive. For example, you don't need a Hash[A] instance to construct a HashMap because the #hash call is only needed for insert.
+
+Don't use context bounds for syntax classes because, when a type does not have an instance, the error will be "no method found" instead of "there's not typeclass instance".
+
+The thing that makes Nothing special is that it can take any Kind.
+
+F[A]
+F is a program, whose instructions are derived from the terms in the F sum type. The program may yield/return one or more values of type A.
+A is the Return Value of the program. The program computes A. That's not a guarantee because the instructions in F may allow it to fail (Future, etc).
+
+Semigroup
+#combine[A](one: A, two: A): A
+
+Monoid extends Semigroup
+#zero: A
+
+Functor
+Alter the output of a program
+#map[A, B](fa: F[A])(f: A => B): F[B]
+
+Apply
+Combine two programs
+#zip[A, B](fa: F[A], fb: F[B]): F[(A, B)]
+#ap[A, B](fab: F[A => B])(fa: F[A]): F[B]
+
+Applicative extends Apply
+Create a program.
+#point[A](a: => A): F[A]
+
+Monad
+Use the output of one program as the input of the next.
+#bind[A, B](fa: F[A])(f: A => F[B]): F[B]
+(aka flatMap)
+
+Foldable
+#foldRight[A, Z](fa: F[A])(f: (A, Z) => Z): Z
+#foldMap[A, B: Monoid](fa: F[A])(f: A => B): B
+In theory you derive foldMap from foldRight, but in practice we have to implement both for additional data types.
+
+Traverse extends Foldable with Functor
+#traverse[G[_]: Applicative, A, B](
+    fa: F[A]
+  )(
+    f: A => G[B]
+  ): G[F[B]]
+Get #sequence for free.
+Functional zip is the cartesean cross product. This is diff than scala zip, which just pairs elements with the same index and drops any extra.
+For things with a sigle thing inside, zip of 3 things gives a tuple3
+
+Monad captures the concept of context sensitive sequential computation.
+
+Traversable is an effectful for loop
+forEach[G[_]: Applicative, A, B](
+  collection: F[A]
+)(
+  body: A => G[B]
+): G[F[B]]
+
+List(1, 2, 3).forEach { integer =>
+  api.getStatus(integer) : Future[Status]
+}: Future[List[Status]]
+
+#traverse is a #map followed by a #sequence
+
+Optics
+let us zoom in and copy a structure with an edit we define
+val org2 = org.department.staff.person.vacationDays -= 3
+
+S T A B
+S initial state around the thing, A, that we are editing.
+T is the state around the updated thing, B.
+The most common case is that S and T are the same and that's the one the class covers.
+
+S is a product type containing field A
+Person(name="Joe",vacationDays=18)
+Lens[S, A]
+get S -> A
+set A -> S -> S
+
+Prisms are for Sum Types what Lenses are for Product Types
+Where a product type has a lens for every field in the record, a sum type might have a prism depending on which value in the sum you actually get
+Prism[S, A]
+get S -> Option[A]
+set A -> S
+
+Three core optic types
+term in product
+term in a sum
+element in a collection
+Everything else is a result of composing those three.
+
+Thunk is a Function0. Useful for making an eager thing lazy.
+
+acquire: IO[E, A]
+release: A => IO[Nothing, Unit]
+use:     A => IO[E, B]
+
+acquire.bracket(release(_))(use(_))
+Release will be called if acquire is and neither will be interupted.
+
+ensuring also has a guarentee that it will not be interupted.
+
+ZIO schedule inputs depend on whether it's passed to IO #repeat or #retry. IO's success values in the former and the error values in the latter.
+
+ZIO's ensuring works across async boundaries where java/scala try/finally does not.
+
+Use bracket for acquire and release.
+
+Final Tagless style let's us abstract over the IO type so code can depend on a subset of the api. Random, Sync, Console, etc
+Final Tagless refers to the use of these typeclasses (most of them don't have laws like the monadic hierarchy). Some of these benefits can be had by passing in a function that has the effect needed.
